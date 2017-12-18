@@ -5,7 +5,6 @@ import org.apache.commons.lang.SerializationUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
@@ -14,7 +13,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ReceiverProducer<T> implements Flow.Publisher<T> {
 
-    private static Logger log = LoggerFactory.getLogger(ReceiverProducer.class);
+    private final static Logger log = LoggerFactory.getLogger(ReceiverProducer.class);
     private final ExecutorService executor;
     private final String host;
     private final String exchange;
@@ -22,7 +21,8 @@ public class ReceiverProducer<T> implements Flow.Publisher<T> {
     private final CompletableFuture<Void> terminated = new CompletableFuture<>();
     private final Set<ReceiverSubscription> subscriptions = Collections.synchronizedSet(new HashSet<>());
 
-    public ReceiverProducer(ExecutorService executor, String host, String exchange, String routingKey) {
+    private ReceiverProducer(final ExecutorService executor, final String host, final String exchange,
+                             final String routingKey) {
         this.executor = executor;
         this.host = host;
         this.exchange = exchange;
@@ -30,7 +30,7 @@ public class ReceiverProducer<T> implements Flow.Publisher<T> {
         log.info("Rabbitmq receiver stream producer started!");
     }
 
-    public ReceiverProducer(String host, String exchange, String routingKey) {
+    public ReceiverProducer(final String host, final String exchange, final String routingKey) {
         this.executor = Executors.newFixedThreadPool(4);
         this.host = host;
         this.exchange = exchange;
@@ -46,12 +46,12 @@ public class ReceiverProducer<T> implements Flow.Publisher<T> {
         }
     }
 
-    public ReceiverProducer subscribe(java.util.function.Consumer<T> onNext) {
+    public ReceiverProducer subscribe(final java.util.function.Consumer<T> onNext) {
         final ReceiverSubscriber<T> receiverSubscriber = new ReceiverSubscriber<>() {
             @Override
             public void onNext(T item) {
                 super.onNext(item);
-                onNext.accept((T) item);
+                onNext.accept(item);
             }
         };
         subscribe(receiverSubscriber);
@@ -59,9 +59,9 @@ public class ReceiverProducer<T> implements Flow.Publisher<T> {
     }
 
     @Override
-    public void subscribe(Flow.Subscriber<? super T> subscriber) {
+    public void subscribe(final Flow.Subscriber<? super T> subscriber) {
         try {
-            ReceiverSubscription<T> receiverSubscription = new ReceiverSubscription<>(executor, subscriber, host, exchange, routingKey);
+            final ReceiverSubscription receiverSubscription = new ReceiverSubscription(executor, subscriber, host, exchange, routingKey);
             subscriptions.add(receiverSubscription);
             subscriber.onSubscribe(receiverSubscription);
             log.info("Added a new subscriber!");
@@ -70,7 +70,7 @@ public class ReceiverProducer<T> implements Flow.Publisher<T> {
         }
     }
 
-    private class ReceiverSubscription<T> implements Flow.Subscription {
+    private class ReceiverSubscription implements Flow.Subscription {
         private static final int MESSAGE_BUFFER_SIZE = 100;
         private static final long MESSAGE_BUFFER_TIMEOUT = 1000;
 
@@ -80,11 +80,11 @@ public class ReceiverProducer<T> implements Flow.Publisher<T> {
         private final String queueName;
         private final Consumer consumer;
         private final ExecutorService executor;
-        private Flow.Subscriber<? super T> subscriber;
-        private AtomicBoolean isCanceled;
+        private final Flow.Subscriber<? super T> subscriber;
+        private final AtomicBoolean isCanceled;
 
-        public ReceiverSubscription(ExecutorService executor, Flow.Subscriber<? super T> subscriber,
-                                    String host, String exchange, String routingKey) throws Exception {
+        private ReceiverSubscription(final ExecutorService executor, final Flow.Subscriber<? super T> subscriber,
+                                     final String host, final String exchange, final String routingKey) throws Exception {
             this.executor = executor;
             this.subscriber = subscriber;
             this.messageBuffer = new LinkedBlockingQueue<>(MESSAGE_BUFFER_SIZE);
@@ -101,7 +101,7 @@ public class ReceiverProducer<T> implements Flow.Publisher<T> {
             this.consumer = new DefaultConsumer(channel) {
                 @Override
                 public void handleDelivery(String consumerTag, Envelope envelope,
-                                           AMQP.BasicProperties properties, byte[] body) throws IOException {
+                                           AMQP.BasicProperties properties, byte[] body) {
                     try {
                         T message = (T) SerializationUtils.deserialize(body);
                         try {
@@ -119,7 +119,7 @@ public class ReceiverProducer<T> implements Flow.Publisher<T> {
         }
 
         @Override
-        public void request(long n) {
+        public void request(final long n) {
             if (isCanceled.get())
                 return;
             if (n == Long.MAX_VALUE) {
@@ -140,25 +140,21 @@ public class ReceiverProducer<T> implements Flow.Publisher<T> {
             });
         }
 
-        private void publishItems(long n) {
+        private void publishItems(final long n) {
 
-            int remainItems = messageBuffer.size();
+            final int remainItems = messageBuffer.size();
 
             if ((remainItems == n) || (remainItems > n)) {
                 log.debug("Consuming " + n + " items to be published to Subscriber!");
                 for (int i = 0; i < n; i++) {
-                    executor.execute(() -> {
-                        subscriber.onNext(messageBuffer.poll());
-                    });
+                    executor.execute(() -> subscriber.onNext(messageBuffer.poll()));
                 }
                 subscriber.onComplete();
                 log.trace("Remaining " + (messageBuffer.size() - n) + " items to be published to Subscriber!");
             } else if ((remainItems > 0) && (remainItems < n)) {
                 log.debug("Consuming " + n + " items to be published to Subscriber!");
                 for (int i = 0; i < remainItems; i++) {
-                    executor.execute(() -> {
-                        subscriber.onNext(messageBuffer.poll());
-                    });
+                    executor.execute(() -> subscriber.onNext(messageBuffer.poll()));
                 }
                 subscriber.onComplete();
             } else {

@@ -5,25 +5,25 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.Flow;
 
-public class ReceiverSubscriber<T> implements Flow.Subscriber<T>{
+class ReceiverSubscriber<T> implements Flow.Subscriber<T>{
 
-    private static Logger log = LoggerFactory.getLogger(ReceiverSubscriber.class);
+    private static final Logger log = LoggerFactory.getLogger(ReceiverSubscriber.class);
 
     private Flow.Subscription subscription;
 
     @Override
-    public void onSubscribe(Flow.Subscription subscription) {
+    public void onSubscribe(final Flow.Subscription subscription) {
         this.subscription = subscription;
         this.subscription.request(Long.MAX_VALUE);
     }
 
     @Override
-    public void onNext(T item) {
+    public void onNext(final T item) {
         log.debug("Consumed message: {}", item);
     }
 
     @Override
-    public void onError(Throwable throwable) {
+    public void onError(final Throwable throwable) {
         log.error("Got error: {}", throwable);
     }
 

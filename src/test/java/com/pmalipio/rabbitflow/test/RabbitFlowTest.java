@@ -7,22 +7,21 @@ import com.rabbitmq.client.ConnectionFactory;
 import org.apache.commons.lang.SerializationUtils;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
 import java.util.concurrent.*;
 import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.*;
 
-public class RabbitFlowTest {
+class RabbitFlowTest {
     private static final String EXCHANGE_NAME = "ex";
 
     @Test
-    public void basicTest() throws Exception {
-        String message = "Test message";
+    void basicTest() {
+        final String message = "Test message";
 
-        CountDownLatch latch = new CountDownLatch(1);
+        final CountDownLatch latch = new CountDownLatch(1);
 
-        ReceiverProducer receiverProducer = new ReceiverProducer<>("172.17.0.2", EXCHANGE_NAME, "")
+        final ReceiverProducer receiverProducer = new ReceiverProducer<>("172.17.0.2", EXCHANGE_NAME, "")
                 .subscribe(m -> {
                     assertThat(m).isEqualTo(message);
                     latch.countDown();
@@ -40,13 +39,13 @@ public class RabbitFlowTest {
     }
 
     @Test
-    public void test2Subscribers() {
+    void test2Subscribers() {
 
-        String message = "Test message";
+        final String message = "Test message";
 
-        CountDownLatch latch = new CountDownLatch(2);
+        final CountDownLatch latch = new CountDownLatch(2);
 
-        ReceiverProducer receiverProducer = new ReceiverProducer<>("172.17.0.2", EXCHANGE_NAME, "")
+        final ReceiverProducer receiverProducer = new ReceiverProducer<>("172.17.0.2", EXCHANGE_NAME, "")
                 .subscribe(m -> {
                     assertThat(m).isEqualTo(message);
                     latch.countDown();
@@ -72,16 +71,16 @@ public class RabbitFlowTest {
     }
 
     @Test
-    public void testCongestion() {
-        String message = "Test message";
+    void testCongestion() {
+        final String message = "Test message";
 
-        int numberOfMessages = 1000;
+        final int numberOfMessages = 1000;
 
-        CountDownLatch latch = new CountDownLatch(numberOfMessages);
+        final CountDownLatch latch = new CountDownLatch(numberOfMessages);
 
-        ExecutorService executor = Executors.newSingleThreadExecutor();
+        final ExecutorService executor = Executors.newSingleThreadExecutor();
 
-        ReceiverProducer receiverProducer = new ReceiverProducer<>("172.17.0.2", EXCHANGE_NAME, "")
+        final ReceiverProducer receiverProducer = new ReceiverProducer<>("172.17.0.2", EXCHANGE_NAME, "")
                 .subscribe(m -> {
                     try {
                         Thread.sleep(10);
@@ -102,21 +101,20 @@ public class RabbitFlowTest {
         }
     }
 
-    private void sendMessage(String message) {
+    private void sendMessage(final String message) {
         sendMessages(1, message);
     }
 
-    private void sendMessages(int numberOfMessages, String message) {
+    private void sendMessages(final int numberOfMessages, final String message) {
         try {
-
-            ConnectionFactory factory = new ConnectionFactory();
+            final ConnectionFactory factory = new ConnectionFactory();
             factory.setHost("172.17.0.2");
-            Connection connection = factory.newConnection();
-            Channel channel = connection.createChannel();
+            final Connection connection = factory.newConnection();
+            final Channel channel = connection.createChannel();
 
             channel.exchangeDeclare(EXCHANGE_NAME, "fanout");
 
-            byte[] serializedMsg = SerializationUtils.serialize(message);
+            final byte[] serializedMsg = SerializationUtils.serialize(message);
 
             IntStream.range(0, numberOfMessages)
                     .forEach(i -> {
